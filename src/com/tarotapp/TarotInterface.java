@@ -4,7 +4,6 @@ import javax.swing.*;
 import java.awt.*;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
-import java.io.File;
 import java.util.ArrayList;
 import java.util.List;
 
@@ -12,6 +11,7 @@ public class TarotInterface {
     private JFrame frame;
     private JPanel cardsPanel;
     private JButton drawButton;
+    private JButton resetButton;
     private JLabel meaningLabel;
     private List<JButton> cardButtons;
 
@@ -31,38 +31,83 @@ public class TarotInterface {
     }
 
     private void initComponents() {
-        JPanel gridPanel = new JPanel(new GridLayout(3, 1, 0, 10)); // 10 пикселей отступа по вертикали
+        JPanel gridPanel = new JPanel(new GridBagLayout());
+        GridBagConstraints gbc = new GridBagConstraints();
+        gbc.fill = GridBagConstraints.HORIZONTAL;
+        gbc.insets = new Insets(10, 0, 10, 0);
 
         // Панель для отображения карт
-        cardsPanel = new JPanel();
-        cardsPanel.setLayout(new FlowLayout(FlowLayout.CENTER, 10, 10)); // 10 пикселей между карточками
+        cardsPanel = new JPanel(new FlowLayout(FlowLayout.CENTER, 10, 10));
+        gbc.gridx = 0;
+        gbc.gridy = 0;
+        gbc.weightx = 1;
+        gbc.weighty = 0.4;
+        gridPanel.add(cardsPanel, gbc);
 
-        // Начальное состояние, один зеленый прямоугольник
-        JButton initialCard = createCardButton(" ");
-        initialCard.setBackground(Color.GREEN);
-        initialCard.addActionListener(e -> showFourCards());
-        cardsPanel.add(initialCard);
+        ImageIcon initialIcon = createScaledIcon("src/com/tarotapp/images/back.png", 150, 200);
+        JButton card = createCardButton("");
+        card.setIcon(initialIcon);
+        cardsPanel.add(card);
 
-        gridPanel.add(cardsPanel);
-
-        // Кнопка для начала расклада
+        // Панель кнопок
+        JPanel buttonsPanel = new JPanel(new FlowLayout());
         drawButton = new JButton("Начать расклад");
         drawButton.addActionListener(e -> showFourCards());
-
-        JPanel buttonsPanel = new JPanel();
         buttonsPanel.add(drawButton);
-        gridPanel.add(buttonsPanel);
 
-        // Метка для толкования карты
-        meaningLabel = new JLabel("Толкование карты", SwingConstants.CENTER);
-        gridPanel.add(meaningLabel);
+        resetButton = new JButton("Начать заново");
+        resetButton.addActionListener(e -> resetGame());
+        resetButton.setVisible(false);
+        buttonsPanel.add(resetButton);
 
-        frame.add(gridPanel, BorderLayout.CENTER);
+        gbc.gridy = 1;
+        gbc.weighty = 0;
+        gridPanel.add(buttonsPanel, gbc);
+
+        // Панель для отображения результата в рамке с картинкой и отступами
+        JPanel meaningPanel = new ImagePanel("src/com/tarotapp/images/frame.png");
+        meaningPanel.setLayout(new BorderLayout());
+        meaningLabel = new JLabel("", SwingConstants.CENTER);
+        meaningLabel.setBorder(BorderFactory.createEmptyBorder(20, 20, 20, 20)); // отступы со всех сторон
+        meaningPanel.add(meaningLabel, BorderLayout.CENTER);
+        meaningPanel.setPreferredSize(new Dimension(600, 450));
+
+        gbc.gridy = 2;
+        gbc.weighty = 0.6;
+        gbc.fill = GridBagConstraints.BOTH;
+        gridPanel.add(meaningPanel, gbc);
+
+        // Обертываем gridPanel в JScrollPane для добавления прокрутки
+        JScrollPane scrollPane = new JScrollPane(gridPanel);
+        scrollPane.setVerticalScrollBarPolicy(JScrollPane.VERTICAL_SCROLLBAR_AS_NEEDED);
+        scrollPane.setHorizontalScrollBarPolicy(JScrollPane.HORIZONTAL_SCROLLBAR_NEVER);
+
+        frame.add(scrollPane, BorderLayout.CENTER);
+    }
+
+    private static class ImagePanel extends JPanel {
+        private Image backgroundImage;
+
+        public ImagePanel(String path) {
+            try {
+                backgroundImage = new ImageIcon(path).getImage();
+            } catch (Exception e) {
+                e.printStackTrace();
+            }
+        }
+
+        @Override
+        protected void paintComponent(Graphics g) {
+            super.paintComponent(g);
+            if (backgroundImage != null) {
+                g.drawImage(backgroundImage, 0, 0, getWidth(), getHeight(), this);
+            }
+        }
     }
 
     private JButton createCardButton(String text) {
         JButton button = new JButton(text);
-        button.setPreferredSize(new Dimension(150, 200)); // Изменение размера на 3x4
+        button.setPreferredSize(new Dimension(150, 200));
         button.setOpaque(true);
         button.setContentAreaFilled(false);
         button.setBorderPainted(false);
@@ -72,29 +117,21 @@ public class TarotInterface {
     }
 
     private void showFourCards() {
-        // Удаляем все компоненты из панели для карт и кнопки
         cardsPanel.removeAll();
+        ImageIcon initialIcon = createScaledIcon("src/com/tarotapp/images/back.png", 150, 200);
 
-        // Создаем 4 зеленых прямоугольника
         cardButtons = new ArrayList<>();
         for (int i = 0; i < 4; i++) {
             JButton card = createCardButton("");
-            card.setBackground(Color.GREEN);
 
-            // Пример добавления иконки в карточку с масштабированием
-            String imagePath = "src/com/tarotapp/images/image" + (i + 1) + ".png";
-            ImageIcon icon = createScaledIcon(imagePath, 150, 200);
-            card.setIcon(icon);
+            card.setIcon(initialIcon);
 
             card.addActionListener(new CardActionListener(i));
             cardsPanel.add(card);
             cardButtons.add(card);
         }
 
-        // Удаляем кнопку "Начать расклад"
         drawButton.setVisible(false);
-
-        // Обновляем интерфейс
         cardsPanel.revalidate();
         cardsPanel.repaint();
     }
@@ -107,10 +144,15 @@ public class TarotInterface {
     }
 
     private void showCardMeaning(int cardIndex) {
-        // Пример для демонстрации
         String[] cardNames = {"The Fool", "The Magician", "The High Priestess", "The Empress"};
         String[] cardMeanings = {
-                "New beginnings, optimism, trust in life",
+                "Общий прогноз на сегодня: Сегодня ваша жизнь будет зависеть от текущих действий. Важно фокусироваться на обучении и развитии интеллектуальных способностей, чтобы раскрыть свой потенциал для достижения целей. Имейте в виду: возможны коварные интриги и нехватка важной информации.\n" +
+                        "\n" +
+                        "Любовь и отношения: Остерегайтесь обмана и лицемерия со стороны партнера. Возможны разочарование и ревность. Постарайтесь сохранить внимательность и уверенность в себе. Эмоциональная близость может быть под угрозой, старайтесь укрепить ваши отношения.\n" +
+                        "\n" +
+                        "Финансы: На работе предстоит внедрение инновационного подхода. Возможен хаос и срыв планов; важно не спешить с принятием решений. Вы обладаете независимостью от материальных вещей и можете сосредоточиться на творческом развитии, отказавшись от денежных вознаграждений.\n" +
+                        "\n" +
+                        "Здоровье: Обратите внимание на возможные заболевания или их обострение. Вероятен неточный диагноз, поэтому воздержитесь от посещения врачей и перепроверьте медицинские заключения. Высок риск врачебной ошибки, поэтому будьте внимательны и осторожны.",
                 "Action, the power to manifest",
                 "Inaction, going within, the subconscious",
                 "Fertility, femininity, beauty, nature, abundance"
@@ -118,10 +160,29 @@ public class TarotInterface {
 
         meaningLabel.setText("Карта: " + cardNames[cardIndex] + " - Толкование: " + cardMeanings[cardIndex]);
 
-        // Отключаем оставшиеся карточки
-        for (JButton button : cardButtons) {
-            button.setEnabled(false);
+        for (int i = 0; i < cardButtons.size(); i++) {
+            if (i != cardIndex) {
+                JButton button = cardButtons.get(i);
+                button.setEnabled(false);
+            }
         }
+        resetButton.setVisible(true);
+    }
+
+    private void resetGame() {
+        cardsPanel.removeAll();
+
+        JButton initialCard = createCardButton(" ");
+        ImageIcon initialIcon = createScaledIcon("src/com/tarotapp/images/back.png", 150, 200);
+        initialCard.setIcon(initialIcon);
+        initialCard.addActionListener(e -> showFourCards());
+        cardsPanel.add(initialCard);
+
+        resetButton.setVisible(false);
+        drawButton.setVisible(true);
+
+        cardsPanel.revalidate();
+        cardsPanel.repaint();
     }
 
     private class CardActionListener implements ActionListener {
@@ -135,12 +196,16 @@ public class TarotInterface {
         public void actionPerformed(ActionEvent e) {
             JButton source = (JButton) e.getSource();
             source.setBackground(Color.RED);
+
+            String imagePath = "src/com/tarotapp/images/image" + (cardIndex + 1) + ".png";
+            ImageIcon revealedIcon = createScaledIcon(imagePath, 150, 200);
+            source.setIcon(revealedIcon);
+
             showCardMeaning(cardIndex);
         }
     }
 
     public static void main(String[] args) {
-        // Запуск приложения
         SwingUtilities.invokeLater(TarotInterface::new);
     }
 }
